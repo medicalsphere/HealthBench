@@ -25,6 +25,7 @@ from typing import Literal
 import blobfile as bf
 import numpy as np
 import pandas as pd
+import urllib.request
 
 from . import common
 from .sampler.chat_completion_sampler import (
@@ -36,6 +37,24 @@ from .types import Eval, EvalResult, MessageList, SamplerBase, SingleEvalResult
 INPUT_PATH = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_eval.jsonl"
 INPUT_PATH_HARD = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/hard_2025-05-08-21-00-10.jsonl"
 INPUT_PATH_CONSENSUS = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/consensus_2025-05-09-20-00-46.jsonl"
+
+def load_jsonl_from_url(url: str) -> list:
+    """Load JSONL data from URL. Try public access first, fall back to Azure auth if needed."""
+    try:
+        # Check if file is publicly accessible (HEAD request)
+        req = urllib.request.Request(url, method='HEAD')
+        with urllib.request.urlopen(req, timeout=5) as response:
+            if response.status == 200:
+                # File is public, download using urllib (no auth needed)
+                print(f"File is publicly accessible, downloading without authentication...")
+                with urllib.request.urlopen(url) as data_response:
+                    lines = data_response.read().decode('utf-8').strip().split('\n')
+                    return [json.loads(line) for line in lines]
+    except Exception as e:
+        # File is not publicly accessible or urllib failed, use blobfile with Azure auth
+        print(f"Public access failed ({type(e).__name__}: {e}), using blobfile with Azure authentication...")
+        with bf.BlobFile(url, "rb") as f:
+            return [json.loads(line) for line in f]
 
 GRADER_TEMPLATE = """
 Your job is to look at a conversation and a rubric item, and score the last turn (i.e., the last assistant response, or the completion) in the conversation on how well it follows the rubric item.
@@ -292,8 +311,7 @@ class HealthBenchEval(Eval):
             input_path = INPUT_PATH
         else:
             assert False, f"Invalid subset name: {subset_name}"
-        with bf.BlobFile(input_path, "rb") as f:
-            examples = [json.loads(line) for line in f]
+        examples = load_jsonl_from_url(input_path)
         for example in examples:
             example["rubrics"] = [RubricItem.from_dict(d) for d in example["rubrics"]]
 
