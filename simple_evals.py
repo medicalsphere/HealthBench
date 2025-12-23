@@ -4,6 +4,10 @@ import subprocess
 from datetime import datetime
 
 import pandas as pd
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from . import common
 from .healthbench_eval import HealthBenchEval
