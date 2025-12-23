@@ -261,40 +261,6 @@ def main():
         )
         # Set num_examples = None to reproduce full evals
         match eval_name:
-            case "mmlu":
-                return MMLUEval(num_examples=1 if debug_mode else num_examples)
-            case "math":
-                return MathEval(
-                    equality_checker=equality_checker,
-                    num_examples=num_examples,
-                    n_repeats=1 if debug_mode else args.n_repeats or 10,
-                )
-            case "gpqa":
-                return GPQAEval(
-                    n_repeats=1 if debug_mode else args.n_repeats or 10,
-                    num_examples=num_examples,
-                )
-            case "mgsm":
-                return MGSMEval(
-                    num_examples_per_lang=10 if debug_mode else num_examples or 250
-                )
-            case "drop":
-                return DropEval(
-                    num_examples=10 if debug_mode else num_examples,
-                    train_samples_per_prompt=3,
-                )
-            case "humaneval":
-                return HumanEval(num_examples=10 if debug_mode else num_examples)
-            case "simpleqa":
-                return SimpleQAEval(
-                    grader_model=grading_sampler,
-                    num_examples=10 if debug_mode else num_examples,
-                )
-            case "browsecomp":
-                return BrowseCompEval(
-                    grader_model=grading_sampler,
-                    num_examples=10 if debug_mode else num_examples,
-                )
             case "healthbench":
                 return HealthBenchEval(
                     grader_model=grading_sampler,
@@ -335,8 +301,9 @@ def main():
         for eval_name in evals_list:
             try:
                 evals[eval_name] = get_evals(eval_name, args.debug)
-            except Exception:
+            except Exception as e:
                 print(f"Error: eval '{eval_name}' not found.")
+                print(f"Error message: {e}")
                 return
     else:
         evals = {
