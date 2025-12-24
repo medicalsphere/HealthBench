@@ -46,13 +46,11 @@ def load_jsonl_from_url(url: str) -> list:
         with urllib.request.urlopen(req, timeout=5) as response:
             if response.status == 200:
                 # File is public, download using urllib (no auth needed)
-                print(f"File is publicly accessible, downloading without authentication...")
                 with urllib.request.urlopen(url) as data_response:
                     lines = data_response.read().decode('utf-8').strip().split('\n')
                     return [json.loads(line) for line in lines]
     except Exception as e:
         # File is not publicly accessible or urllib failed, use blobfile with Azure auth
-        print(f"Public access failed ({type(e).__name__}: {e}), using blobfile with Azure authentication...")
         with bf.BlobFile(url, "rb") as f:
             return [json.loads(line) for line in f]
 
@@ -196,17 +194,27 @@ def get_usage_dict(response_usage) -> dict[str, int | None]:
             "total_tokens": response_usage.total_tokens,
         }
     except AttributeError:
-        return {
-            "input_tokens": response_usage.prompt_tokens,
-            "input_cached_tokens": response_usage.prompt_tokens_details.cached_tokens
-            if hasattr(response_usage.prompt_tokens_details, "cached_tokens")
-            else response_usage.prompt_tokens_details["cached_tokens"],
-            "output_tokens": response_usage.completion_tokens,
-            "output_reasoning_tokens": response_usage.completion_tokens_details.reasoning_tokens
-            if hasattr(response_usage.completion_tokens_details, "reasoning_tokens")
-            else response_usage.completion_tokens_details["reasoning_tokens"],
-            "total_tokens": response_usage.total_tokens,
-        }
+        try:
+            return {
+                "input_tokens": response_usage.prompt_tokens,
+                "input_cached_tokens": response_usage.prompt_tokens_details.cached_tokens
+                if hasattr(response_usage.prompt_tokens_details, "cached_tokens")
+                else response_usage.prompt_tokens_details["cached_tokens"],
+                "output_tokens": response_usage.completion_tokens,
+                "output_reasoning_tokens": response_usage.completion_tokens_details.reasoning_tokens
+                if hasattr(response_usage.completion_tokens_details, "reasoning_tokens")
+                else response_usage.completion_tokens_details["reasoning_tokens"],
+                "total_tokens": response_usage.total_tokens,
+            }
+        except AttributeError:
+            # Handle Gemini's format
+            return {
+                "input_tokens": getattr(response_usage, "prompt_token_count", None),
+                "input_cached_tokens": None,  # Gemini doesn't expose cached tokens in the same way
+                "output_tokens": getattr(response_usage, "candidates_token_count", None),
+                "output_reasoning_tokens": getattr(response_usage, "thoughts_token_count", None),
+                "total_tokens": getattr(response_usage, "total_token_count", None),
+            }
 
 
 PHYSICIAN_COMPLETION_MODES = {

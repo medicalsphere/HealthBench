@@ -20,6 +20,7 @@ from .sampler.chat_completion_sampler import (
 from .sampler.claude_sampler import ClaudeCompletionSampler, CLAUDE_SYSTEM_MESSAGE_LMSYS
 from .sampler.o_chat_completion_sampler import OChatCompletionSampler
 from .sampler.responses_sampler import ResponsesSampler
+from .sampler.gemini_sampler import GeminiSampler
 
 
 def main():
@@ -229,6 +230,16 @@ def main():
         "claude-3-haiku-20240307": ClaudeCompletionSampler(
             model="claude-3-haiku-20240307",
         ),
+        # Gemini models:
+        "gemini-2.5-flash": GeminiSampler(
+            model="gemini-2.5-flash",
+        ),
+        "gemini-3-flash-preview": GeminiSampler(
+            model="gemini-3-flash-preview",
+        ),
+        "gemini-3-pro-preview": GeminiSampler(
+            model="gemini-3-pro-preview",
+        )
     }
 
     if args.list_models:
