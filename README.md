@@ -6,7 +6,7 @@ This repository is based on [simple-evals](https://github.com/openai/simple-eval
 
 ## 🎉 Updates
 
-- **Gemini Support**: HealthBench now supports Google's Gemini models (gemini-2.5-pro, gemini-3-pro-preview, gemini-2.5-flash, gemini-3-flash-preview)
+- **Gemini Support**: HealthBench now supports Google's Gemini models (`gemini-2.5-pro`, `gemini-3-pro-preview`, `gemini-2.5-flash`, `gemini-3-flash-preview`)
 
 
 ## 🔧 Setup
