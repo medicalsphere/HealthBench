@@ -486,6 +486,11 @@ class HealthBenchEval(Eval):
                 )
                 response_usage = response_dict.get("usage", None)
 
+            # Handle None response_text to prevent pipeline breakage
+            if response_text is None:
+                print(f"Warning: response_text is None for prompt_id={row.get('prompt_id', 'unknown')}")
+                response_text = ""
+
             metrics, readable_explanation_str, rubric_items_with_grades = (
                 self.grade_sample(
                     prompt=actual_queried_prompt_messages,
