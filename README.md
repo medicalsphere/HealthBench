@@ -36,18 +36,26 @@ GEMINI_API_KEY=your_gemini_key
 
 ## 📖 Usage
 
+> **Note:** Run these commands from the **parent directory** of HealthBench (not inside the HealthBench folder). For example, if HealthBench is located at `/path/to/HealthBench`, run the commands from `/path/to/`.
+
 **Quick test:**
 
-```bash
-python -m HealthBench.simple_evals --model gpt-4o --eval healthbench_hard --n-threads 4 --examples 10
-```
-
 This runs the evaluation on only 10 examples, useful for testing your setup before running a full evaluation.
+
+```bash
+python -m HealthBench.simple_evals \
+  --model gpt-4o \
+  --eval healthbench_hard \
+  --n-threads 4 \
+  --examples 10
+```
 
 **Run full evaluation:**
 
 ```bash
-python -m HealthBench.simple_evals --model gpt-4.1-nano --eval healthbench
+python -m HealthBench.simple_evals \
+  --model gpt-4.1-nano \
+  --eval healthbench
 ```
 
 ### ⚙️ Parameters
@@ -68,7 +76,10 @@ The `--n-threads` parameter controls how many parallel API requests are made dur
 **Example for low-tier access:**
 
 ```bash
-python -m HealthBench.simple_evals --model gpt-4o --eval healthbench --n-threads 4
+python -m HealthBench.simple_evals \
+  --model gpt-4o \
+  --eval healthbench \
+  --n-threads 4
 ```
 
 **Recommended values based on your API tier:**
