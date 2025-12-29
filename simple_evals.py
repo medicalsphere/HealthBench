@@ -231,14 +231,17 @@ def main():
             model="claude-3-haiku-20240307",
         ),
         # Gemini models:
+        "gemini-2.5-pro": GeminiSampler(
+            model="gemini-2.5-pro",
+        ),
+        "gemini-3-pro-preview": GeminiSampler(
+            model="gemini-3-pro-preview",
+        ),
         "gemini-2.5-flash": GeminiSampler(
             model="gemini-2.5-flash",
         ),
         "gemini-3-flash-preview": GeminiSampler(
             model="gemini-3-flash-preview",
-        ),
-        "gemini-3-pro-preview": GeminiSampler(
-            model="gemini-3-pro-preview",
         )
     }
 
