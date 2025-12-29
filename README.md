@@ -36,10 +36,18 @@ GEMINI_API_KEY=your_gemini_key
 
 ## 📖 Usage
 
-Run an evaluation with a specific model:
+**Quick test:**
 
 ```bash
-python -m HealthBench.simple_evals --model gpt-4.1-nano --eval healthbench_hard --n-threads 2
+python -m HealthBench.simple_evals --model gpt-4o --eval healthbench_hard --n-threads 4 --examples 10
+```
+
+This runs the evaluation on only 10 examples, useful for testing your setup before running a full evaluation.
+
+**Run full evaluation:**
+
+```bash
+python -m HealthBench.simple_evals --model gpt-4.1-nano --eval healthbench
 ```
 
 ### ⚙️ Parameters
@@ -60,7 +68,7 @@ The `--n-threads` parameter controls how many parallel API requests are made dur
 **Example for low-tier access:**
 
 ```bash
-python -m HealthBench.simple_evals --model gpt-4o --eval healthbench --n-threads 5
+python -m HealthBench.simple_evals --model gpt-4o --eval healthbench --n-threads 4
 ```
 
 **Recommended values based on your API tier:**
