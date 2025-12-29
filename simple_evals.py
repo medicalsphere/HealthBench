@@ -219,6 +219,14 @@ def main():
             system_message=OPENAI_SYSTEM_MESSAGE_CHATGPT,
         ),
         # Claude models:
+        "claude-sonnet-4-5-20250929": ClaudeCompletionSampler(
+            model="claude-sonnet-4-5-20250929",
+            system_message=CLAUDE_SYSTEM_MESSAGE_LMSYS,
+        ),
+        "claude-opus-4-5-20251101": ClaudeCompletionSampler(
+            model="claude-opus-4-5-20251101",
+            system_message=CLAUDE_SYSTEM_MESSAGE_LMSYS,
+        ),
         "claude-3-opus-20240229_empty": ClaudeCompletionSampler(
             model="claude-3-opus-20240229",
             system_message=CLAUDE_SYSTEM_MESSAGE_LMSYS,
