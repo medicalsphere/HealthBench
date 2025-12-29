@@ -2,15 +2,14 @@
 
 Implementation of OpenAI's [HealthBench](https://openai.com/index/healthbench/) evaluation framework.
 
-This repository is based on [simple-evals](https://github.com/openai/simple-evals) by OpenAI, which is the official reference implementation for HealthBench and other evaluations. However, the original repository is no longer being actively updated. We have forked and updated it to focus exclusively on the HealthBench evaluation with modern model support.
+This repository is based on [simple-evals](https://github.com/openai/simple-evals) by OpenAI, which is the official reference implementation for HealthBench and other evaluations. However, the original repository is no longer being actively updated. We have forked and updated it to focus exclusively on the HealthBench evaluation with additional model support.
 
 ## 🎉 Updates
 
 - **Gemini Support**: HealthBench now supports Google's Gemini models (gemini-2.5-pro, gemini-3-pro-preview, gemini-2.5-flash, gemini-3-flash-preview)
 
-## 🚀 Setup
 
-### 🔧 Environment Setup
+## 🔧 Setup
 
 **Step 1:** Create and activate a conda environment:
 
@@ -66,6 +65,6 @@ python -m HealthBench.simple_evals --model gpt-4o --eval healthbench --n-threads
 
 **Recommended values based on your API tier:**
 
-- 🚀 **High-tier/Enterprise**: 120+ (default)
-- 📊 **Standard tier**: 20-50
-- 🔰 **Low-tier/Free**: 1-10
+- **High-tier/Enterprise**: 120+ (default)
+- **Standard tier**: 20-50
+- **Low-tier/Free**: 1-10
