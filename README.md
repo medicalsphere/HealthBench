@@ -11,17 +11,18 @@ This repository is based on [simple-evals](https://github.com/openai/simple-eval
 
 ## 🔧 Setup
 
-**Step 1:** Create and activate a conda environment:
+**Step 1:** Install [uv](https://docs.astral.sh/uv/getting-started/installation/) (if not already installed):
 
 ```bash
-conda create -n healthbench python=3.11
-conda activate healthbench
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-**Step 2:** Install dependencies:
+**Step 2:** Clone the repository and install dependencies:
 
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/your-username/HealthBench.git
+cd HealthBench
+uv sync
 ```
 
 ### 🔑 Environment Variables
@@ -36,14 +37,14 @@ GEMINI_API_KEY=your_gemini_key
 
 ## 📖 Usage
 
-> **Note:** Run these commands from the **parent directory** of HealthBench (not inside the HealthBench folder). For example, if HealthBench is located at `/path/to/HealthBench`, run the commands from `/path/to/`.
+Run all commands from inside the HealthBench directory.
 
 **Quick test:**
 
 This runs the evaluation on only 10 examples, useful for testing your setup before running a full evaluation.
 
 ```bash
-python -m HealthBench.simple_evals \
+uv run python -m healthbench \
   --model gpt-4o \
   --eval healthbench_hard \
   --n-threads 4 \
@@ -53,7 +54,7 @@ python -m HealthBench.simple_evals \
 **Run full evaluation:**
 
 ```bash
-python -m HealthBench.simple_evals \
+uv run python -m healthbench \
   --model gpt-4.1-nano \
   --eval healthbench
 ```
@@ -76,7 +77,7 @@ The `--n-threads` parameter controls how many parallel API requests are made dur
 **Example for low-tier access:**
 
 ```bash
-python -m HealthBench.simple_evals \
+uv run python -m healthbench \
   --model gpt-4o \
   --eval healthbench \
   --n-threads 4

@@ -4,7 +4,7 @@ from typing import Any
 
 from google import genai
 
-from ..types import MessageList, SamplerBase, SamplerResponse
+from ..eval_types import MessageList, SamplerBase, SamplerResponse
 
 
 class GeminiSampler(SamplerBase):
