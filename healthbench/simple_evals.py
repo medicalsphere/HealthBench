@@ -2,6 +2,7 @@ import argparse
 import json
 import subprocess
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -10,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from . import common
-from .healthbench_eval import HealthBenchEval
+from .healthbench_eval import HealthBenchEval, HealthBenchProfessionalEval
 from .healthbench_meta_eval import HealthBenchMetaEval
 from .sampler.chat_completion_sampler import (
     OPENAI_SYSTEM_MESSAGE_API,
@@ -49,15 +50,86 @@ def main():
     parser.add_argument(
         "--n-threads",
         type=int,
-        default=120,
+        default=4,
         help="Number of threads to run. Only supported for HealthBench and HealthBenchMeta.",
     )
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")
     parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Directory to write result files (default: results/ relative to repo root).",
+    )
+    parser.add_argument(
         "--examples", type=int, help="Number of examples to use (overrides default)"
+    )
+    parser.add_argument(
+        "--healthbench-input-path",
+        type=str,
+        default=None,
+        help=(
+            "Run the main HealthBench eval from a blobfile-readable JSONL path in "
+            "HealthBench format. This only applies to --eval=healthbench."
+        ),
+    )
+    parser.add_argument(
+        "--healthbench-professional-mode",
+        action="store_true",
+        help=(
+            "Require the HealthBench Professional option bundle: main HealthBench "
+            "custom input path, GPT-5.4 low grader, and length adjustment."
+        ),
+    )
+    parser.add_argument(
+        "--healthbench-use-gpt-5-4-low-grader",
+        action="store_true",
+        help="Use GPT-5.4 with low reasoning effort as the HealthBench rubric grader.",
+    )
+    parser.add_argument(
+        "--healthbench-length-adjustment-center",
+        type=float,
+        default=None,
+        help=(
+            "Center character count for HealthBench length adjustment. Must be set "
+            "together with --healthbench-length-adjustment-penalty-per-500-chars."
+        ),
+    )
+    parser.add_argument(
+        "--healthbench-length-adjustment-penalty-per-500-chars",
+        type=float,
+        default=None,
+        help=(
+            "Numerical score penalty per 500 response characters for HealthBench "
+            "length adjustment. Must be set together with "
+            "--healthbench-length-adjustment-center."
+        ),
     )
 
     args = parser.parse_args()
+
+    if args.healthbench_professional_mode:
+        evals_requested = set(args.eval.split(",")) if args.eval is not None else set()
+        if evals_requested != {"healthbench"}:
+            parser.error(
+                "--healthbench-professional-mode requires --eval=healthbench"
+            )
+        if args.healthbench_input_path is None:
+            parser.error(
+                "--healthbench-professional-mode requires --healthbench-input-path"
+            )
+        if not args.healthbench_use_gpt_5_4_low_grader:
+            parser.error(
+                "--healthbench-professional-mode requires "
+                "--healthbench-use-gpt-5-4-low-grader"
+            )
+        if (
+            args.healthbench_length_adjustment_center is None
+            or args.healthbench_length_adjustment_penalty_per_500_chars is None
+        ):
+            parser.error(
+                "--healthbench-professional-mode requires both HealthBench length "
+                "adjustment flags"
+            )
 
     models = {
         # Reasoning Models
@@ -127,6 +199,16 @@ def main():
         "o3-mini_low": OChatCompletionSampler(
             model="o3-mini",
             reasoning_effort="low",
+        ),
+        # GPT-5 models
+        "gpt-5.5-2026-04-23": ResponsesSampler(
+            model="gpt-5.5-2026-04-23",
+        ),
+        "gpt-5.4-2026-03-05": ResponsesSampler(
+            model="gpt-5.4-2026-03-05",
+        ),
+        "gpt-5.4-mini-2026-03-17": ResponsesSampler(
+            model="gpt-5.4-mini-2026-03-17",
         ),
         # GPT-4.1 models
         "gpt-4.1": ChatCompletionSampler(
@@ -250,6 +332,12 @@ def main():
         ),
         "gemini-3-flash-preview": GeminiSampler(
             model="gemini-3-flash-preview",
+        ),
+        "gemini-3.1-pro-preview": GeminiSampler(
+            model="gemini-3.1-pro-preview",
+        ),
+        "gemini-3.1-flash-lite": GeminiSampler(
+            model="gemini-3.1-flash-lite",
         )
     }
 
@@ -277,6 +365,16 @@ def main():
     equality_checker = ChatCompletionSampler(model="gpt-4-turbo-preview")
     # ^^^ used for fuzzy matching, just for math
 
+    healthbench_grading_sampler = (
+        ResponsesSampler(
+            model="gpt-5.4-2026-03-05",
+            reasoning_model=True,
+            reasoning_effort="low",
+        )
+        if args.healthbench_use_gpt_5_4_low_grader
+        else grading_sampler
+    )
+
     def get_evals(eval_name, debug_mode):
         num_examples = (
             args.examples if args.examples is not None else (5 if debug_mode else None)
@@ -285,31 +383,45 @@ def main():
         match eval_name:
             case "healthbench":
                 return HealthBenchEval(
-                    grader_model=grading_sampler,
+                    grader_model=healthbench_grading_sampler,
                     num_examples=10 if debug_mode else num_examples,
                     n_repeats=args.n_repeats or 1,
                     n_threads=args.n_threads or 1,
                     subset_name=None,
+                    input_path=args.healthbench_input_path,
+                    length_adjustment_center=args.healthbench_length_adjustment_center,
+                    length_adjustment_penalty_per_500_chars=args.healthbench_length_adjustment_penalty_per_500_chars,
                 )
             case "healthbench_hard":
                 return HealthBenchEval(
-                    grader_model=grading_sampler,
+                    grader_model=healthbench_grading_sampler,
                     num_examples=10 if debug_mode else num_examples,
                     n_repeats=args.n_repeats or 1,
                     n_threads=args.n_threads or 1,
                     subset_name="hard",
+                    length_adjustment_center=args.healthbench_length_adjustment_center,
+                    length_adjustment_penalty_per_500_chars=args.healthbench_length_adjustment_penalty_per_500_chars,
                 )
             case "healthbench_consensus":
                 return HealthBenchEval(
-                    grader_model=grading_sampler,
+                    grader_model=healthbench_grading_sampler,
                     num_examples=10 if debug_mode else num_examples,
                     n_repeats=args.n_repeats or 1,
                     n_threads=args.n_threads or 1,
                     subset_name="consensus",
+                    length_adjustment_center=args.healthbench_length_adjustment_center,
+                    length_adjustment_penalty_per_500_chars=args.healthbench_length_adjustment_penalty_per_500_chars,
                 )
             case "healthbench_meta":
                 return HealthBenchMetaEval(
                     grader_model=grading_sampler,
+                    num_examples=10 if debug_mode else num_examples,
+                    n_repeats=args.n_repeats or 1,
+                    n_threads=args.n_threads or 1,
+                )
+            case "healthbench_professional":
+                return HealthBenchProfessionalEval(
+                    grader_model=healthbench_grading_sampler,
                     num_examples=10 if debug_mode else num_examples,
                     n_repeats=args.n_repeats or 1,
                     n_threads=args.n_threads or 1,
@@ -353,40 +465,35 @@ def main():
     print(f"Running the following evals: {list(evals.keys())}")
     print(f"Running evals for the following models: {list(models.keys())}")
 
+    output_dir = Path(args.output_dir) if args.output_dir else Path(__file__).parent.parent / "results"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     now = datetime.now()
     date_str = now.strftime("%Y%m%d_%H%M%S")
     for model_name, sampler in models.items():
         for eval_name, eval_obj in evals.items():
             result = eval_obj(sampler)
-            # ^^^ how to use a sampler
-            file_stem = f"{eval_name}_{model_name}"
-            # file stem should also include the year, month, day, and time in hours and minutes
-            file_stem += f"_{date_str}"
-            report_filename = f"/tmp/{file_stem}{debug_suffix}.html"
+            file_stem = f"{eval_name}_{model_name}_{date_str}"
+            report_filename = output_dir / f"{file_stem}{debug_suffix}.html"
             print(f"Writing report to {report_filename}")
-            with open(report_filename, "w") as fh:
-                fh.write(common.make_report(result))
+            report_filename.write_text(common.make_report(result))
             assert result.metrics is not None
             metrics = result.metrics | {"score": result.score}
-            # Sort metrics by key
             metrics = dict(sorted(metrics.items()))
             print(metrics)
-            result_filename = f"/tmp/{file_stem}{debug_suffix}.json"
-            with open(result_filename, "w") as f:
-                f.write(json.dumps(metrics, indent=2))
+            result_filename = output_dir / f"{file_stem}{debug_suffix}.json"
+            result_filename.write_text(json.dumps(metrics, indent=2))
             print(f"Writing results to {result_filename}")
 
-            full_result_filename = f"/tmp/{file_stem}{debug_suffix}_allresults.json"
-            with open(full_result_filename, "w") as f:
-                result_dict = {
-                    "score": result.score,
-                    "metrics": result.metrics,
-                    "htmls": result.htmls,
-                    "convos": result.convos,
-                    "metadata": result.metadata,
-                }
-                f.write(json.dumps(result_dict, indent=2))
-                print(f"Writing all results to {full_result_filename}")
+            full_result_filename = output_dir / f"{file_stem}{debug_suffix}_allresults.json"
+            full_result_filename.write_text(json.dumps({
+                "score": result.score,
+                "metrics": result.metrics,
+                "htmls": result.htmls,
+                "convos": result.convos,
+                "metadata": result.metadata,
+            }, indent=2))
+            print(f"Writing all results to {full_result_filename}")
 
             mergekey2resultpath[f"{file_stem}"] = result_filename
     merge_metrics = []

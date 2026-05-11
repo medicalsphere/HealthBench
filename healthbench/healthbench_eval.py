@@ -2,13 +2,16 @@
 This script evaluates the performance of a model on the HealthBench dataset.
 
 To run HealthBench, HealthBench Consensus, or HealthBench Hard, use the simple-evals script:
-- `python -m simple-evals.simple_evals --eval=healthbench --model=gpt-4.1`
-- `python -m simple-evals.simple_evals --eval=healthbench_consensus --model=gpt-4.1`
-- `python -m simple-evals.simple_evals --eval=healthbench_hard --model=gpt-4.1`
+- `python -m healthbench.simple_evals --eval=healthbench --model=gpt-4.1`
+- `python -m healthbench.simple_evals --eval=healthbench_consensus --model=gpt-4.1`
+- `python -m healthbench.simple_evals --eval=healthbench_hard --model=gpt-4.1`
+
+To run HealthBench Professional:
+- `python -m healthbench.simple_evals --eval=healthbench_professional --model=gpt-4.1`
 
 You can also evaluate physician ideal completions or reference completions against the HealthBench rubrics. To do so, run the following command:
-- To evaluate physician ideal completions: `python -m simple-evals.healthbench_eval --run_mode=physician_completions`
-- To evaluate reference model completions used by physicians: `python -m simple-evals.healthbench_eval --run_mode=physician_completion_references`
+- To evaluate physician ideal completions: `python -m healthbench.healthbench_eval --run_mode=physician_completions`
+- To evaluate reference model completions used by physicians: `python -m healthbench.healthbench_eval --run_mode=physician_completion_references`
 """
 
 import argparse
@@ -148,6 +151,16 @@ class RubricItem:
             points=d["points"],
             tags=d["tags"],
         )
+
+
+def calculate_length_adjusted_score(
+    score: float,
+    response_text: str,
+    *,
+    center: float,
+    penalty_per_500_chars: float,
+) -> float:
+    return score - penalty_per_500_chars * ((len(response_text) - center) / 500.0)
 
 
 def calculate_score(
@@ -300,7 +313,30 @@ class HealthBenchEval(Eval):
         run_reference_completions: bool = False,
         n_threads: int = 120,
         subset_name: Literal["hard", "consensus"] | None = None,
+        input_path: str | None = None,
+        length_adjustment_center: float | None = None,
+        length_adjustment_penalty_per_500_chars: float | None = None,
     ):
+        length_adjustment_enabled = (
+            length_adjustment_center is not None
+            or length_adjustment_penalty_per_500_chars is not None
+        )
+        if length_adjustment_enabled:
+            if (
+                length_adjustment_center is None
+                or length_adjustment_penalty_per_500_chars is None
+            ):
+                raise ValueError(
+                    "length_adjustment_center and "
+                    "length_adjustment_penalty_per_500_chars must be set together"
+                )
+            if length_adjustment_center < 0:
+                raise ValueError("length_adjustment_center must be non-negative")
+            if length_adjustment_penalty_per_500_chars < 0:
+                raise ValueError(
+                    "length_adjustment_penalty_per_500_chars must be non-negative"
+                )
+
         if run_reference_completions:
             assert physician_completions_mode is not None, (
                 "physician_completions_mode must be provided if run_reference_completions is True"
@@ -311,14 +347,18 @@ class HealthBenchEval(Eval):
                 "physician_completions_mode must have reference completions if run_reference_completions is True"
             )
 
-        if subset_name == "hard":
-            input_path = INPUT_PATH_HARD
-        elif subset_name == "consensus":
-            input_path = INPUT_PATH_CONSENSUS
-        elif subset_name is None:
-            input_path = INPUT_PATH
+        if input_path is None:
+            if subset_name == "hard":
+                input_path = INPUT_PATH_HARD
+            elif subset_name == "consensus":
+                input_path = INPUT_PATH_CONSENSUS
+            elif subset_name is None:
+                input_path = INPUT_PATH
+            else:
+                assert False, f"Invalid subset name: {subset_name}"
         else:
-            assert False, f"Invalid subset name: {subset_name}"
+            assert subset_name is None, "subset_name must be None when input_path is set"
+
         examples = load_jsonl_from_url(input_path)
         for example in examples:
             example["rubrics"] = [RubricItem.from_dict(d) for d in example["rubrics"]]
@@ -378,6 +418,10 @@ class HealthBenchEval(Eval):
         self.examples = examples * n_repeats
         self.n_threads = n_threads
         self.grader_model = grader_model
+        self.length_adjustment_center = length_adjustment_center
+        self.length_adjustment_penalty_per_500_chars = (
+            length_adjustment_penalty_per_500_chars
+        )
 
     def grade_sample(
         self,
@@ -420,6 +464,14 @@ class HealthBenchEval(Eval):
         metrics = {
             "overall_score": overall_score,
         }
+        if self.length_adjustment_center is not None:
+            assert self.length_adjustment_penalty_per_500_chars is not None
+            metrics["overall_score_length_adjusted"] = calculate_length_adjusted_score(
+                overall_score,
+                response_text,
+                center=self.length_adjustment_center,
+                penalty_per_500_chars=self.length_adjustment_penalty_per_500_chars,
+            )
 
         # compute scores for example-level tags)
         example_tag_scores = {tag: overall_score for tag in example_tags}
@@ -544,6 +596,88 @@ class HealthBenchEval(Eval):
         )
         final_metrics = _aggregate_get_clipped_mean(results)
         return final_metrics
+
+
+# Length adjustment parameters from the HealthBench Professional paper (Section 4.1):
+# center = 2000 chars, penalty = 2.94e-5 per char = 0.0147 per 500 chars
+PROFESSIONAL_LENGTH_ADJUSTMENT_CENTER = 2000.0
+PROFESSIONAL_LENGTH_ADJUSTMENT_PENALTY_PER_500_CHARS = 0.0147
+
+# Default path to the bundled HealthBench Professional data file
+_DEFAULT_PROFESSIONAL_DATA_PATH = (
+    Path(__file__).parent.parent / "data" / "assets" / "healthbench_professional_eval.jsonl"
+)
+
+
+def _convert_professional_example(raw: dict) -> dict:
+    """Convert a HealthBench Professional JSONL record to the standard HealthBench format."""
+    prompt = raw["conversation"]["messages"]
+    rubrics = [
+        {
+            "criterion": item["criterion_text"],
+            "points": item["points"],
+            "tags": [],
+        }
+        for item in raw["rubric_items"]
+    ]
+    example_tags = [
+        tag
+        for tag in [
+            raw.get("use_case"),
+            raw.get("type"),
+            raw.get("difficulty"),
+            raw.get("specialty"),
+        ]
+        if tag is not None
+    ]
+    return {
+        "prompt": prompt,
+        "rubrics": rubrics,
+        "example_tags": example_tags,
+        "prompt_id": raw["id"],
+        "ideal_completions_data": None,
+    }
+
+
+class HealthBenchProfessionalEval(HealthBenchEval):
+    """Eval for HealthBench Professional using the bundled local data file.
+
+    Applies the paper's default length adjustment (center=2000, penalty=0.0147/500 chars)
+    and loads from data/assets/healthbench_professional_eval.jsonl by default.
+    """
+
+    def __init__(
+        self,
+        grader_model: SamplerBase,
+        num_examples: int | None = None,
+        n_repeats: int = 1,
+        n_threads: int = 120,
+        data_path: str | Path | None = None,
+        length_adjustment_center: float = PROFESSIONAL_LENGTH_ADJUSTMENT_CENTER,
+        length_adjustment_penalty_per_500_chars: float = PROFESSIONAL_LENGTH_ADJUSTMENT_PENALTY_PER_500_CHARS,
+    ):
+        path = Path(data_path) if data_path is not None else _DEFAULT_PROFESSIONAL_DATA_PATH
+        with open(path, "r", encoding="utf-8") as f:
+            raw_examples = [json.loads(line) for line in f]
+
+        converted = [_convert_professional_example(ex) for ex in raw_examples]
+
+        # Bootstrap into HealthBenchEval by calling object.__init__ and manually
+        # setting attributes, bypassing the URL-loading __init__.
+        import random as _random
+        rng = _random.Random(0)
+        if num_examples is not None and num_examples < len(converted):
+            converted = rng.sample(converted, num_examples)
+
+        for example in converted:
+            example["rubrics"] = [RubricItem.from_dict(d) for d in example["rubrics"]]
+
+        self.examples = converted * n_repeats
+        self.n_threads = n_threads
+        self.grader_model = grader_model
+        self.physician_completions_mode = None
+        self.length_adjustment_center = length_adjustment_center
+        self.length_adjustment_penalty_per_500_chars = length_adjustment_penalty_per_500_chars
 
 
 def main():

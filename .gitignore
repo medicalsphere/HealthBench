@@ -2,6 +2,10 @@
 .env
 .env.*
 
+# Eval results (keep folder, ignore output files)
+results/*
+!results/.gitkeep
+
 # Python
 __pycache__/
 *.py[cod]

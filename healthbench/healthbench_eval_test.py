@@ -1,4 +1,4 @@
-from .healthbench_eval import RubricItem, calculate_score
+from .healthbench_eval import RubricItem, calculate_length_adjusted_score, calculate_score
 
 
 def test_calculate_score():
@@ -22,5 +22,18 @@ def test_calculate_score():
     )
 
 
+def test_calculate_length_adjusted_score():
+    assert abs(
+        calculate_length_adjusted_score(
+            0.8,
+            "a" * 2500,
+            center=2000,
+            penalty_per_500_chars=0.022,
+        )
+        - 0.778
+    ) < 1e-12
+
+
 if __name__ == "__main__":
     test_calculate_score()
+    test_calculate_length_adjusted_score()
