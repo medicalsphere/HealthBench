@@ -105,32 +105,21 @@ uv run python -m healthbench \
 
 ### Parameters
 
-```
---model                                        Model name (use --list-models to see all available models)
---eval                                         Evaluation type: healthbench, healthbench_hard,
-                                               healthbench_consensus, healthbench_meta, healthbench_professional
---n-threads                                    Number of parallel threads (default: 4)
---n-repeats                                    Number of evaluation repeats (default: 1)
---examples                                     Number of examples to run (overrides default)
---debug                                        Run in debug mode with 10 examples
---output-dir                                   Directory to write results (default: results/)
---healthbench-input-path                       Custom JSONL data path in HealthBench format
-                                               (only for --eval=healthbench)
---healthbench-grader-model                     Grader model ID
-                                               (default: gpt-4.1-2025-04-14;
-                                               auto-set to gpt-5.4-2026-03-05 for healthbench_professional)
---healthbench-grader-reasoning-effort          Reasoning effort for the grader: low, medium, high
-                                               (auto-set to low for healthbench_professional)
---healthbench-length-adjustment-center         Center character count for length penalty
-                                               (auto-set to 2000 for healthbench_professional)
---healthbench-length-adjustment-penalty-       Score penalty per 500 response characters
-  per-500-chars                                (auto-set to 0.0147 for healthbench_professional)
---healthbench-professional-mode                Validation bundle for --eval=healthbench with a custom
-                                               input path — requires --healthbench-input-path,
-                                               --healthbench-grader-model gpt-5.4-2026-03-05,
-                                               --healthbench-grader-reasoning-effort low,
-                                               and both length adjustment flags
-```
+| Parameter | Description |
+|---|---|
+| `--model` | Model name (use `--list-models` to see all available models) |
+| `--eval` | Evaluation type: `healthbench`, `healthbench_hard`, `healthbench_consensus`, `healthbench_meta`, `healthbench_professional` |
+| `--n-threads` | Number of parallel threads (default: `4`) |
+| `--n-repeats` | Number of evaluation repeats (default: `1`) |
+| `--examples` | Number of examples to run (overrides default) |
+| `--debug` | Run in debug mode with 10 examples |
+| `--output-dir` | Directory to write results (default: `results/`) |
+| `--healthbench-input-path` | Custom JSONL data path in HealthBench format (only for `--eval=healthbench`) |
+| `--healthbench-grader-model` | Grader model ID (default: `gpt-4.1-2025-04-14`; auto-set to `gpt-5.4-2026-03-05` for `healthbench_professional`) |
+| `--healthbench-grader-reasoning-effort` | Reasoning effort for the grader: `low`, `medium`, `high` (auto-set to `low` for `healthbench_professional`) |
+| `--healthbench-length-adjustment-center` | Center character count for length penalty (auto-set to `2000` for `healthbench_professional`) |
+| `--healthbench-length-adjustment-penalty-per-500-chars` | Score penalty per 500 response characters (auto-set to `0.0147` for `healthbench_professional`) |
+| `--healthbench-professional-mode` | Validation bundle for `--eval=healthbench` with a custom input path — requires `--healthbench-input-path`, `--healthbench-grader-model gpt-5.4-2026-03-05`, `--healthbench-grader-reasoning-effort low`, and both length adjustment flags |
 
 ## Tips & FAQ
 
