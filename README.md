@@ -142,6 +142,6 @@ uv run python -m healthbench \
 
 ## References
 
-- Arora, A. et al. (2025). **HealthBench: Evaluating Large Language Models Towards Improved Human Health.** arXiv. https://arxiv.org/abs/2505.08775
+- Arora, R. K. et al. (2025). **HealthBench: Evaluating Large Language Models Towards Improved Human Health.** arXiv. https://arxiv.org/abs/2505.08775
 
-- Katz, B. et al. (2026). **HealthBench Professional: Evaluating Large Language Models on Real Clinician Chats.** arXiv. https://arxiv.org/abs/2604.27470
+- Soskin Hicks, R. et al. (2026). **HealthBench Professional: Evaluating Large Language Models on Real Clinician Chats.** arXiv. https://arxiv.org/abs/2604.27470
