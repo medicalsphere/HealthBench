@@ -640,10 +640,11 @@ def _convert_professional_example(raw: dict) -> dict:
 
 
 class HealthBenchProfessionalEval(HealthBenchEval):
-    """Eval for HealthBench Professional using the bundled local data file.
+    """Eval for HealthBench Professional.
 
-    Applies the paper's default length adjustment (center=2000, penalty=0.0147/500 chars)
-    and loads from data/assets/healthbench_professional_eval.jsonl by default.
+    Loads from HuggingFace (openai/healthbench-professional) by default,
+    falling back to the bundled local file if HF is unavailable.
+    Applies the paper's default length adjustment (center=2000, penalty=0.0147/500 chars).
     """
 
     def __init__(
@@ -656,9 +657,19 @@ class HealthBenchProfessionalEval(HealthBenchEval):
         length_adjustment_center: float = PROFESSIONAL_LENGTH_ADJUSTMENT_CENTER,
         length_adjustment_penalty_per_500_chars: float = PROFESSIONAL_LENGTH_ADJUSTMENT_PENALTY_PER_500_CHARS,
     ):
-        path = Path(data_path) if data_path is not None else _DEFAULT_PROFESSIONAL_DATA_PATH
-        with open(path, "r", encoding="utf-8") as f:
-            raw_examples = [json.loads(line) for line in f]
+        if data_path is not None:
+            with open(Path(data_path), "r", encoding="utf-8") as f:
+                raw_examples = [json.loads(line) for line in f]
+        else:
+            try:
+                from datasets import load_dataset
+                ds = load_dataset("openai/healthbench-professional", split="test")
+                raw_examples = [dict(row) for row in ds]
+                print(f"Loaded {len(raw_examples)} examples from HuggingFace (openai/healthbench-professional)")
+            except Exception as e:
+                print(f"HuggingFace load failed ({e}), falling back to local data file.")
+                with open(_DEFAULT_PROFESSIONAL_DATA_PATH, "r", encoding="utf-8") as f:
+                    raw_examples = [json.loads(line) for line in f]
 
         converted = [_convert_professional_example(ex) for ex in raw_examples]
 

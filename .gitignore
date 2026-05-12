@@ -1,3 +1,6 @@
+# IDE
+.vscode/
+
 # Environment variables
 .env
 .env.*
@@ -5,6 +8,9 @@
 # Eval results (keep folder, ignore output files)
 results/*
 !results/.gitkeep
+
+# MedSphere import files (contain evaluation data, not for version control)
+medsphere-import/*.json
 
 # Python
 __pycache__/

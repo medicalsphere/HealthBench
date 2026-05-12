@@ -11,7 +11,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from . import common
-from .healthbench_eval import HealthBenchEval, HealthBenchProfessionalEval
+from .healthbench_eval import (
+    HealthBenchEval,
+    HealthBenchProfessionalEval,
+    PROFESSIONAL_LENGTH_ADJUSTMENT_CENTER,
+    PROFESSIONAL_LENGTH_ADJUSTMENT_PENALTY_PER_500_CHARS,
+)
 from .healthbench_meta_eval import HealthBenchMetaEval
 from .sampler.chat_completion_sampler import (
     OPENAI_SYSTEM_MESSAGE_API,
@@ -22,6 +27,36 @@ from .sampler.claude_sampler import ClaudeCompletionSampler, CLAUDE_SYSTEM_MESSA
 from .sampler.o_chat_completion_sampler import OChatCompletionSampler
 from .sampler.responses_sampler import ResponsesSampler
 from .sampler.gemini_sampler import GeminiSampler
+
+
+# Models that use the Responses API (no temperature, optional reasoning_effort).
+_RESPONSES_API_GRADER_MODELS = {
+    "gpt-5.5-2026-04-23",
+    "gpt-5.4-2026-03-05",
+    "gpt-5.4-mini-2026-03-17",
+    "o3-2025-04-16",
+    "o4-mini-2025-04-16",
+    "o1-pro",
+}
+
+
+def _build_healthbench_grader(args, default_grader):
+    """Build the HealthBench rubric grader sampler from CLI args.
+
+    Uses --healthbench-grader-model (default: gpt-4.1-2025-04-14) and
+    --healthbench-grader-reasoning-effort. GPT-5.x and o-series models
+    route to the Responses API; all others use Chat Completions.
+    """
+    model = args.healthbench_grader_model
+    reasoning_effort = args.healthbench_grader_reasoning_effort
+
+    if model in _RESPONSES_API_GRADER_MODELS or reasoning_effort is not None:
+        return ResponsesSampler(
+            model=model,
+            reasoning_model=True,
+            reasoning_effort=reasoning_effort,
+        )
+    return default_grader
 
 
 def main():
@@ -77,13 +112,30 @@ def main():
         action="store_true",
         help=(
             "Require the HealthBench Professional option bundle: main HealthBench "
-            "custom input path, GPT-5.4 low grader, and length adjustment."
+            "custom input path, gpt-5.4 low grader, and length adjustment."
         ),
     )
     parser.add_argument(
-        "--healthbench-use-gpt-5-4-low-grader",
-        action="store_true",
-        help="Use GPT-5.4 with low reasoning effort as the HealthBench rubric grader.",
+        "--healthbench-grader-model",
+        type=str,
+        default="gpt-4.1-2025-04-14",
+        help=(
+            "Grader model ID for HealthBench rubric evaluation "
+            "(default: gpt-4.1-2025-04-14). "
+            "GPT-5.x and o-series models use the Responses API; others use Chat Completions. "
+            "For HealthBench Professional use gpt-5.4-2026-03-05 with "
+            "--healthbench-grader-reasoning-effort low."
+        ),
+    )
+    parser.add_argument(
+        "--healthbench-grader-reasoning-effort",
+        type=str,
+        default=None,
+        choices=["low", "medium", "high"],
+        help=(
+            "Reasoning effort for the grader model when using the Responses API "
+            "(low, medium, high). Only applies to reasoning models."
+        ),
     )
     parser.add_argument(
         "--healthbench-length-adjustment-center",
@@ -107,8 +159,20 @@ def main():
 
     args = parser.parse_args()
 
+    # When running healthbench_professional, fill in paper defaults so they
+    # show up explicitly in the args namespace rather than being silently baked
+    # into the eval class.
+    evals_requested = set(args.eval.split(",")) if args.eval is not None else set()
+    if "healthbench_professional" in evals_requested:
+        if args.healthbench_length_adjustment_center is None:
+            args.healthbench_length_adjustment_center = PROFESSIONAL_LENGTH_ADJUSTMENT_CENTER
+        if args.healthbench_length_adjustment_penalty_per_500_chars is None:
+            args.healthbench_length_adjustment_penalty_per_500_chars = PROFESSIONAL_LENGTH_ADJUSTMENT_PENALTY_PER_500_CHARS
+        if args.healthbench_grader_model == "gpt-4.1-2025-04-14" and args.healthbench_grader_reasoning_effort is None:
+            args.healthbench_grader_model = "gpt-5.4-2026-03-05"
+            args.healthbench_grader_reasoning_effort = "low"
+
     if args.healthbench_professional_mode:
-        evals_requested = set(args.eval.split(",")) if args.eval is not None else set()
         if evals_requested != {"healthbench"}:
             parser.error(
                 "--healthbench-professional-mode requires --eval=healthbench"
@@ -117,10 +181,11 @@ def main():
             parser.error(
                 "--healthbench-professional-mode requires --healthbench-input-path"
             )
-        if not args.healthbench_use_gpt_5_4_low_grader:
+        if args.healthbench_grader_model != "gpt-5.4-2026-03-05" or args.healthbench_grader_reasoning_effort != "low":
             parser.error(
                 "--healthbench-professional-mode requires "
-                "--healthbench-use-gpt-5-4-low-grader"
+                "--healthbench-grader-model gpt-5.4-2026-03-05 "
+                "--healthbench-grader-reasoning-effort low"
             )
         if (
             args.healthbench_length_adjustment_center is None
@@ -203,12 +268,15 @@ def main():
         # GPT-5 models
         "gpt-5.5-2026-04-23": ResponsesSampler(
             model="gpt-5.5-2026-04-23",
+            reasoning_model=True,
         ),
         "gpt-5.4-2026-03-05": ResponsesSampler(
             model="gpt-5.4-2026-03-05",
+            reasoning_model=True,
         ),
         "gpt-5.4-mini-2026-03-17": ResponsesSampler(
             model="gpt-5.4-mini-2026-03-17",
+            reasoning_model=True,
         ),
         # GPT-4.1 models
         "gpt-4.1": ChatCompletionSampler(
@@ -365,15 +433,7 @@ def main():
     equality_checker = ChatCompletionSampler(model="gpt-4-turbo-preview")
     # ^^^ used for fuzzy matching, just for math
 
-    healthbench_grading_sampler = (
-        ResponsesSampler(
-            model="gpt-5.4-2026-03-05",
-            reasoning_model=True,
-            reasoning_effort="low",
-        )
-        if args.healthbench_use_gpt_5_4_low_grader
-        else grading_sampler
-    )
+    healthbench_grading_sampler = _build_healthbench_grader(args, grading_sampler)
 
     def get_evals(eval_name, debug_mode):
         num_examples = (
@@ -425,6 +485,8 @@ def main():
                     num_examples=10 if debug_mode else num_examples,
                     n_repeats=args.n_repeats or 1,
                     n_threads=args.n_threads or 1,
+                    length_adjustment_center=args.healthbench_length_adjustment_center,
+                    length_adjustment_penalty_per_500_chars=args.healthbench_length_adjustment_penalty_per_500_chars,
                 )
             case _:
                 raise Exception(f"Unrecognized eval type: {eval_name}")

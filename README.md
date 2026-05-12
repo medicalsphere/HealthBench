@@ -4,23 +4,26 @@ A implementation of OpenAI's HealthBench and HealthBench Professional evaluation
 
 ## Supported Evaluations
 
-| Eval name | Description | Examples | Data source |
-|---|---|---|---|
-| `healthbench` | Full HealthBench benchmark | ~5,000 | OpenAI public blob |
-| `healthbench_hard` | Difficult subset of HealthBench | ~1,000 | OpenAI public blob |
-| `healthbench_consensus` | Consensus subset of HealthBench | ~1,000 | OpenAI public blob |
-| `healthbench_meta` | Meta-evaluation (grader quality) | ~500 | OpenAI public blob |
-| `healthbench_professional` | HealthBench Professional (clinician chat tasks) | 525 | Bundled locally |
+| Eval name | Description | Examples | Default grader | Data source |
+|---|---|---|---|---|
+| `healthbench` | Full HealthBench benchmark | ~5,000 | `gpt-4.1-2025-04-14` (Chat Completions) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench) / OpenAI public blob |
+| `healthbench_hard` | Difficult subset of HealthBench | ~1,000 | `gpt-4.1-2025-04-14` (Chat Completions) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench) / OpenAI public blob |
+| `healthbench_consensus` | Consensus subset of HealthBench | ~1,000 | `gpt-4.1-2025-04-14` (Chat Completions) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench) / OpenAI public blob |
+| `healthbench_meta` | Meta-evaluation (grader quality) | ~500 | `gpt-4.1-2025-04-14` (Chat Completions) | OpenAI public blob |
+| `healthbench_professional` | HealthBench Professional (clinician chat tasks) | 525 | `gpt-5.4-2026-03-05` low reasoning (Responses API) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench-professional) (local fallback) |
 
-**HealthBench Professional** ([paper](docs/HealthBench-Professional.pdf)) evaluates LLMs on real clinician chat tasks spanning three use cases: care consult, writing and documentation, and medical research. It applies a length adjustment penalty by default (center=2,000 chars, penalty=0.0147 per 500 chars) as described in Section 4.1 of the paper.
+Graders are set per the official papers: GPT-4.1 for HealthBench ([Section 8.1](docs/HealthBench.pdf)), GPT-5.4 at low reasoning for HealthBench Professional ([Section 4](docs/HealthBench-Professional.pdf)). Use `--healthbench-grader-model` and `--healthbench-grader-reasoning-effort` to override.
+
+**HealthBench Professional** ([paper](docs/HealthBench-Professional.pdf) · [dataset](https://huggingface.co/datasets/openai/healthbench-professional)) evaluates LLMs on real clinician chat tasks spanning three use cases: care consult, writing and documentation, and medical research. It applies a length adjustment penalty by default (center=2,000 chars, penalty=0.0147 per 500 chars) as described in Section 4.1 of the paper. Data is loaded from HuggingFace automatically, with the bundled local file as a fallback if HuggingFace is unavailable.
 
 ## Updates
 
-- **HealthBench Professional support**: `--eval=healthbench_professional` runs the 525-example benchmark with the paper's default length adjustment. Data is bundled at `data/assets/healthbench_professional_eval.jsonl`.
-- **Length adjustment**: `--healthbench-length-adjustment-center` and `--healthbench-length-adjustment-penalty-per-500-chars` flags are now available for any HealthBench eval.
+- **HealthBench Professional support**: `--eval=healthbench_professional` runs the 525-example benchmark. GPT-5.4 grader, length adjustment, and paper defaults are all applied automatically. Data loaded from HuggingFace with local fallback.
+- **Explicit grader config**: `--healthbench-grader-model` and `--healthbench-grader-reasoning-effort` control the rubric grader for any eval. All active settings are shown in the args namespace at runtime.
+- **Length adjustment**: `--healthbench-length-adjustment-center` and `--healthbench-length-adjustment-penalty-per-500-chars` are available for any HealthBench eval.
 - **Custom data path**: `--healthbench-input-path` allows running the `healthbench` eval against any local or remote JSONL file in HealthBench format.
-- **GPT-5.4 grader**: `--healthbench-use-gpt-5-4-low-grader` switches the rubric grader to GPT-5.4 at low reasoning effort (the default grader used in the HealthBench Professional paper).
-- **Gemini support**: `gemini-2.5-pro`, `gemini-3-pro-preview`, `gemini-2.5-flash`, `gemini-3-flash-preview`.
+- **GPT-5 models**: `gpt-5.5-2026-04-23`, `gpt-5.4-2026-03-05`, `gpt-5.4-mini-2026-03-17` added via Responses API.
+- **Gemini support**: `gemini-2.5-pro`, `gemini-3-pro-preview`, `gemini-2.5-flash`, `gemini-3-flash-preview`, `gemini-3.1-pro-preview`, `gemini-3.1-flash-lite`.
 - **Claude support**: Claude 3 and Claude 4 model families.
 
 ## Setup
@@ -86,28 +89,32 @@ uv run python -m healthbench \
   --eval healthbench_professional
 ```
 
-This automatically loads the bundled 525-example dataset and applies the paper's default length adjustment. To use the GPT-5.4 grader as in the original paper:
+This automatically loads the 525-example dataset from HuggingFace, applies the paper's default length adjustment (center=2,000, penalty=0.0147/500 chars), and uses `gpt-5.4-2026-03-05` at low reasoning as the grader — all visible in the printed args namespace at runtime.
+
+**Override the grader for any eval:**
 
 ```bash
 uv run python -m healthbench \
   --model gpt-4.1 \
-  --eval healthbench_professional \
-  --healthbench-use-gpt-5-4-low-grader
+  --eval healthbench \
+  --healthbench-grader-model gpt-5.4-2026-03-05 \
+  --healthbench-grader-reasoning-effort low
 ```
 
-**Run HealthBench with a custom data file and length adjustment** (the manual equivalent of `--healthbench-professional-mode`):
+**Run HealthBench with a custom data file** (the manual equivalent of `--healthbench-professional-mode`):
 
 ```bash
 uv run python -m healthbench \
   --model gpt-4.1 \
   --eval healthbench \
   --healthbench-input-path /path/to/custom_data.jsonl \
-  --healthbench-use-gpt-5-4-low-grader \
+  --healthbench-grader-model gpt-5.4-2026-03-05 \
+  --healthbench-grader-reasoning-effort low \
   --healthbench-length-adjustment-center 2000 \
   --healthbench-length-adjustment-penalty-per-500-chars 0.0147
 ```
 
-Or use the validation bundle shorthand:
+Or use the validation bundle shorthand (requires all four flags explicitly):
 
 ```bash
 uv run python -m healthbench \
@@ -115,7 +122,8 @@ uv run python -m healthbench \
   --eval healthbench \
   --healthbench-professional-mode \
   --healthbench-input-path /path/to/data.jsonl \
-  --healthbench-use-gpt-5-4-low-grader \
+  --healthbench-grader-model gpt-5.4-2026-03-05 \
+  --healthbench-grader-reasoning-effort low \
   --healthbench-length-adjustment-center 2000 \
   --healthbench-length-adjustment-penalty-per-500-chars 0.0147
 ```
@@ -130,10 +138,11 @@ uv run python -m healthbench \
 - `--debug`: Run in debug mode with 10 examples
 - `--output-dir`: Directory to write results (default: `results/` in the repo root)
 - `--healthbench-input-path`: Custom JSONL data path in HealthBench format (only for `--eval=healthbench`)
-- `--healthbench-professional-mode`: Validation bundle requiring `--healthbench-input-path`, `--healthbench-use-gpt-5-4-low-grader`, and both length adjustment flags
-- `--healthbench-use-gpt-5-4-low-grader`: Use GPT-5.4 (low reasoning) as the rubric grader
-- `--healthbench-length-adjustment-center`: Center character count for length penalty
-- `--healthbench-length-adjustment-penalty-per-500-chars`: Score penalty per 500 response characters
+- `--healthbench-grader-model`: Grader model ID (default: `gpt-4.1-2025-04-14`; auto-set to `gpt-5.4-2026-03-05` for `healthbench_professional`)
+- `--healthbench-grader-reasoning-effort`: Reasoning effort for the grader — `low`, `medium`, `high` (auto-set to `low` for `healthbench_professional`)
+- `--healthbench-length-adjustment-center`: Center character count for length penalty (auto-set to `2000` for `healthbench_professional`)
+- `--healthbench-length-adjustment-penalty-per-500-chars`: Score penalty per 500 response characters (auto-set to `0.0147` for `healthbench_professional`)
+- `--healthbench-professional-mode`: Validation bundle for `--eval=healthbench` with a custom input path — requires `--healthbench-input-path`, `--healthbench-grader-model gpt-5.4-2026-03-05`, `--healthbench-grader-reasoning-effort low`, and both length adjustment flags
 
 ## Tips & FAQ
 
