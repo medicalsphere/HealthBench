@@ -4,15 +4,17 @@ A implementation of OpenAI's HealthBench and HealthBench Professional evaluation
 
 ## Supported Evaluations
 
-| Eval name | Description | Examples | Default grader | Data source |
-|---|---|---|---|---|
-| `healthbench` | Full HealthBench benchmark | ~5,000 | `gpt-4.1-2025-04-14` (Chat Completions) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench) / OpenAI public blob |
-| `healthbench_hard` | Difficult subset of HealthBench | ~1,000 | `gpt-4.1-2025-04-14` (Chat Completions) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench) / OpenAI public blob |
-| `healthbench_consensus` | Consensus subset of HealthBench | ~1,000 | `gpt-4.1-2025-04-14` (Chat Completions) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench) / OpenAI public blob |
-| `healthbench_meta` | Meta-evaluation (grader quality) | ~500 | `gpt-4.1-2025-04-14` (Chat Completions) | OpenAI public blob |
-| `healthbench_professional` | HealthBench Professional (clinician chat tasks) | 525 | `gpt-5.4-2026-03-05` low reasoning (Responses API) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench-professional) |
+| Eval name | Description | Examples |
+|---|---|---|
+| `healthbench` | Full HealthBench benchmark | 5,000 |
+| `healthbench_hard` | Difficult subset of HealthBench | 1,000 |
+| `healthbench_consensus` | Consensus subset of HealthBench | 3,671 |
+| `healthbench_meta` | Meta-evaluation (grader quality) | 29,511 |
+| `healthbench_professional` | HealthBench Professional (clinician chat tasks) | 525 |
 
-Graders are set per the official papers: GPT-4.1 for HealthBench, GPT-5.4 at low reasoning for HealthBench Professional. Use `--healthbench-grader-model` and `--healthbench-grader-reasoning-effort` to override.
+> **Grader:** `healthbench`, `healthbench_hard`, `healthbench_consensus`, and `healthbench_meta` use `gpt-4.1-2025-04-14` (Chat Completions API) by default. `healthbench_professional` uses `gpt-5.4-2026-03-05` at low reasoning effort (Responses API) per the paper. Override with `--healthbench-grader-model` and `--healthbench-grader-reasoning-effort`.
+>
+> **Data:** `healthbench`, `healthbench_hard`, and `healthbench_consensus` load from 🤗 [openai/healthbench](https://huggingface.co/datasets/openai/healthbench) with OpenAI public blob as fallback. `healthbench_professional` loads from 🤗 [openai/healthbench-professional](https://huggingface.co/datasets/openai/healthbench-professional) with a bundled local file as fallback. `healthbench_meta` loads from the OpenAI public blob.
 
 **HealthBench Professional** evaluates LLMs on real clinician chat tasks spanning three use cases: care consult, writing and documentation, and medical research. It applies a length adjustment penalty by default (center=2,000 chars, penalty=0.0147 per 500 chars) as described in Section 4.1 of the paper. Data is loaded from HuggingFace automatically, with the bundled local file as a fallback if HuggingFace is unavailable.
 
@@ -101,48 +103,34 @@ uv run python -m healthbench \
   --healthbench-grader-reasoning-effort low
 ```
 
-**Run HealthBench with a custom data file** (the manual equivalent of `--healthbench-professional-mode`):
-
-```bash
-uv run python -m healthbench \
-  --model gpt-4.1 \
-  --eval healthbench \
-  --healthbench-input-path /path/to/custom_data.jsonl \
-  --healthbench-grader-model gpt-5.4-2026-03-05 \
-  --healthbench-grader-reasoning-effort low \
-  --healthbench-length-adjustment-center 2000 \
-  --healthbench-length-adjustment-penalty-per-500-chars 0.0147
-```
-
-Or use the validation bundle shorthand (requires all four flags explicitly):
-
-```bash
-uv run python -m healthbench \
-  --model gpt-4.1 \
-  --eval healthbench \
-  --healthbench-professional-mode \
-  --healthbench-input-path /path/to/data.jsonl \
-  --healthbench-grader-model gpt-5.4-2026-03-05 \
-  --healthbench-grader-reasoning-effort low \
-  --healthbench-length-adjustment-center 2000 \
-  --healthbench-length-adjustment-penalty-per-500-chars 0.0147
-```
-
 ### Parameters
 
-- `--model`: Model name (use `--list-models` to see all available models)
-- `--eval`: Evaluation type — `healthbench`, `healthbench_hard`, `healthbench_consensus`, `healthbench_meta`, `healthbench_professional`
-- `--n-threads`: Number of parallel threads (default: 4)
-- `--n-repeats`: Number of evaluation repeats (default: 1)
-- `--examples`: Number of examples to run (overrides default)
-- `--debug`: Run in debug mode with 10 examples
-- `--output-dir`: Directory to write results (default: `results/` in the repo root)
-- `--healthbench-input-path`: Custom JSONL data path in HealthBench format (only for `--eval=healthbench`)
-- `--healthbench-grader-model`: Grader model ID (default: `gpt-4.1-2025-04-14`; auto-set to `gpt-5.4-2026-03-05` for `healthbench_professional`)
-- `--healthbench-grader-reasoning-effort`: Reasoning effort for the grader — `low`, `medium`, `high` (auto-set to `low` for `healthbench_professional`)
-- `--healthbench-length-adjustment-center`: Center character count for length penalty (auto-set to `2000` for `healthbench_professional`)
-- `--healthbench-length-adjustment-penalty-per-500-chars`: Score penalty per 500 response characters (auto-set to `0.0147` for `healthbench_professional`)
-- `--healthbench-professional-mode`: Validation bundle for `--eval=healthbench` with a custom input path — requires `--healthbench-input-path`, `--healthbench-grader-model gpt-5.4-2026-03-05`, `--healthbench-grader-reasoning-effort low`, and both length adjustment flags
+```
+--model                                        Model name (use --list-models to see all available models)
+--eval                                         Evaluation type: healthbench, healthbench_hard,
+                                               healthbench_consensus, healthbench_meta, healthbench_professional
+--n-threads                                    Number of parallel threads (default: 4)
+--n-repeats                                    Number of evaluation repeats (default: 1)
+--examples                                     Number of examples to run (overrides default)
+--debug                                        Run in debug mode with 10 examples
+--output-dir                                   Directory to write results (default: results/)
+--healthbench-input-path                       Custom JSONL data path in HealthBench format
+                                               (only for --eval=healthbench)
+--healthbench-grader-model                     Grader model ID
+                                               (default: gpt-4.1-2025-04-14;
+                                               auto-set to gpt-5.4-2026-03-05 for healthbench_professional)
+--healthbench-grader-reasoning-effort          Reasoning effort for the grader: low, medium, high
+                                               (auto-set to low for healthbench_professional)
+--healthbench-length-adjustment-center         Center character count for length penalty
+                                               (auto-set to 2000 for healthbench_professional)
+--healthbench-length-adjustment-penalty-       Score penalty per 500 response characters
+  per-500-chars                                (auto-set to 0.0147 for healthbench_professional)
+--healthbench-professional-mode                Validation bundle for --eval=healthbench with a custom
+                                               input path — requires --healthbench-input-path,
+                                               --healthbench-grader-model gpt-5.4-2026-03-05,
+                                               --healthbench-grader-reasoning-effort low,
+                                               and both length adjustment flags
+```
 
 ## Tips & FAQ
 
