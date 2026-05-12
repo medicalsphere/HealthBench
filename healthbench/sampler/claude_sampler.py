@@ -1,5 +1,6 @@
 import time
 import os
+from datetime import datetime
 
 import anthropic
 
@@ -8,18 +9,14 @@ from .. import common
 
 CLAUDE_SYSTEM_MESSAGE_LMSYS = (
     "The assistant is Claude, created by Anthropic. The current date is "
-    "{currentDateTime}. Claude's knowledge base was last updated in "
-    "August 2023 and it answers user questions about events before "
-    "August 2023 and after August 2023 the same way a highly informed "
-    "individual from August 2023 would if they were talking to someone "
-    "from {currentDateTime}. It should give concise responses to very "
+    f"{datetime.now().strftime('%B %d, %Y')}. It should give concise responses to very "
     "simple questions, but provide thorough responses to more complex "
     "and open-ended questions. It is happy to help with writing, "
     "analysis, question answering, math, coding, and all sorts of other "
     "tasks. It uses markdown for coding. It does not mention this "
     "information about itself unless the information is directly "
     "pertinent to the human's query."
-).format(currentDateTime="2024-04-01")
+)
 # reference: https://github.com/lm-sys/FastChat/blob/7899355ebe32117fdae83985cf8ee476d2f4243f/fastchat/conversation.py#L894
 
 
@@ -28,9 +25,10 @@ class ClaudeCompletionSampler(SamplerBase):
     def __init__(
         self,
         model: str,
-        system_message: str | None = None,
-        temperature: float = 0.0,  # default in Anthropic example
+        system_message: str | list | None = None,
+        temperature: float | None = None,
         max_tokens: int = 4096,
+        thinking: dict | None = None,
     ):
         self.client = anthropic.Anthropic()
         self.api_key = os.environ.get("ANTHROPIC_API_KEY")  # please set your API_KEY
@@ -38,6 +36,7 @@ class ClaudeCompletionSampler(SamplerBase):
         self.system_message = system_message
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.thinking = thinking
         self.image_format = "base64"
 
     def _handle_image(
@@ -69,31 +68,41 @@ class ClaudeCompletionSampler(SamplerBase):
             try:
                 if not common.has_only_user_assistant_messages(message_list):
                     raise ValueError(f"Claude sampler only supports user and assistant messages, got {message_list}")
+
+                kwargs: dict = {
+                    "model": self.model,
+                    "max_tokens": self.max_tokens,
+                    "messages": message_list,
+                }
+
+                if self.system_message is not None:
+                    kwargs["system"] = self.system_message
+
+                if self.thinking is not None:
+                    # Extended thinking requires temperature=1.0; ignore any explicit temperature setting
+                    kwargs["thinking"] = self.thinking
+                elif self.temperature is not None:
+                    kwargs["temperature"] = self.temperature
+
+                response_message = self.client.messages.create(**kwargs)
+
+                # Handle responses that may include thinking blocks (extended thinking)
+                response_text = next(
+                    (block.text for block in response_message.content if hasattr(block, "text")),
+                    "",
+                )
+
+                claude_input_messages: MessageList = message_list
                 if self.system_message:
-                    response_message = self.client.messages.create(
-                        model=self.model,
-                        system=self.system_message,
-                        max_tokens=self.max_tokens,
-                        temperature=self.temperature,
-                        messages=message_list,
-                    )
-                    claude_input_messages: MessageList = [{"role": "system", "content": self.system_message}] + message_list
-                else:
-                    response_message = self.client.messages.create(
-                        model=self.model,
-                        max_tokens=self.max_tokens,
-                        temperature=self.temperature,
-                        messages=message_list,
-                    )
-                    claude_input_messages = message_list
-                response_text = response_message.content[0].text
+                    claude_input_messages = [{"role": "system", "content": self.system_message}] + message_list
+
                 return SamplerResponse(
                     response_text=response_text,
                     response_metadata={},
                     actual_queried_message_list=claude_input_messages,
                 )
             except anthropic.RateLimitError as e:
-                exception_backoff = 2**trial  # expontial back off
+                exception_backoff = 2**trial  # exponential back off
                 print(
                     f"Rate limit exception so wait and retry {trial} after {exception_backoff} sec",
                     e,

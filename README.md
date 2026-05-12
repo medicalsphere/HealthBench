@@ -24,7 +24,7 @@ Graders are set per the official papers: GPT-4.1 for HealthBench, GPT-5.4 at low
 - **Custom data path**: `--healthbench-input-path` allows running the `healthbench` eval against any local or remote JSONL file in HealthBench format.
 - **GPT-5 models**: `gpt-5.5-2026-04-23`, `gpt-5.4-2026-03-05`, `gpt-5.4-mini-2026-03-17` added via Responses API.
 - **Gemini support**: `gemini-3-flash-preview`, `gemini-3.1-pro-preview`, `gemini-3.1-flash-lite`.
-- **Claude support**: Claude 4.* model series.
+- **Claude support**: `claude-opus-4-7`, `claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929`, `claude-3-7-sonnet-20250219`, `claude-3-haiku-20240307`.
 
 ## Setup
 
