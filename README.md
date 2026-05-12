@@ -10,11 +10,11 @@ A implementation of OpenAI's HealthBench and HealthBench Professional evaluation
 | `healthbench_hard` | Difficult subset of HealthBench | ~1,000 | `gpt-4.1-2025-04-14` (Chat Completions) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench) / OpenAI public blob |
 | `healthbench_consensus` | Consensus subset of HealthBench | ~1,000 | `gpt-4.1-2025-04-14` (Chat Completions) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench) / OpenAI public blob |
 | `healthbench_meta` | Meta-evaluation (grader quality) | ~500 | `gpt-4.1-2025-04-14` (Chat Completions) | OpenAI public blob |
-| `healthbench_professional` | HealthBench Professional (clinician chat tasks) | 525 | `gpt-5.4-2026-03-05` low reasoning (Responses API) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench-professional) (local fallback) |
+| `healthbench_professional` | HealthBench Professional (clinician chat tasks) | 525 | `gpt-5.4-2026-03-05` low reasoning (Responses API) | [HuggingFace](https://huggingface.co/datasets/openai/healthbench-professional) |
 
-Graders are set per the official papers: GPT-4.1 for HealthBench ([Section 8.1](docs/HealthBench.pdf)), GPT-5.4 at low reasoning for HealthBench Professional ([Section 4](docs/HealthBench-Professional.pdf)). Use `--healthbench-grader-model` and `--healthbench-grader-reasoning-effort` to override.
+Graders are set per the official papers: GPT-4.1 for HealthBench, GPT-5.4 at low reasoning for HealthBench Professional. Use `--healthbench-grader-model` and `--healthbench-grader-reasoning-effort` to override.
 
-**HealthBench Professional** ([paper](docs/HealthBench-Professional.pdf) · [dataset](https://huggingface.co/datasets/openai/healthbench-professional)) evaluates LLMs on real clinician chat tasks spanning three use cases: care consult, writing and documentation, and medical research. It applies a length adjustment penalty by default (center=2,000 chars, penalty=0.0147 per 500 chars) as described in Section 4.1 of the paper. Data is loaded from HuggingFace automatically, with the bundled local file as a fallback if HuggingFace is unavailable.
+**HealthBench Professional** evaluates LLMs on real clinician chat tasks spanning three use cases: care consult, writing and documentation, and medical research. It applies a length adjustment penalty by default (center=2,000 chars, penalty=0.0147 per 500 chars) as described in Section 4.1 of the paper. Data is loaded from HuggingFace automatically, with the bundled local file as a fallback if HuggingFace is unavailable.
 
 ## Updates
 
@@ -23,8 +23,8 @@ Graders are set per the official papers: GPT-4.1 for HealthBench ([Section 8.1](
 - **Length adjustment**: `--healthbench-length-adjustment-center` and `--healthbench-length-adjustment-penalty-per-500-chars` are available for any HealthBench eval.
 - **Custom data path**: `--healthbench-input-path` allows running the `healthbench` eval against any local or remote JSONL file in HealthBench format.
 - **GPT-5 models**: `gpt-5.5-2026-04-23`, `gpt-5.4-2026-03-05`, `gpt-5.4-mini-2026-03-17` added via Responses API.
-- **Gemini support**: `gemini-2.5-pro`, `gemini-3-pro-preview`, `gemini-2.5-flash`, `gemini-3-flash-preview`, `gemini-3.1-pro-preview`, `gemini-3.1-flash-lite`.
-- **Claude support**: Claude 3 and Claude 4 model families.
+- **Gemini support**: `gemini-3-flash-preview`, `gemini-3.1-pro-preview`, `gemini-3.1-flash-lite`.
+- **Claude support**: Claude 4.* model series.
 
 ## Setup
 
