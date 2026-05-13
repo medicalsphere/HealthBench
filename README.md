@@ -1,6 +1,6 @@
 # HealthBench
 
-A implementation of OpenAI's HealthBench and HealthBench Professional evaluation frameworks, based on [simple-evals](https://github.com/openai/simple-evals). This repository focuses exclusively on HealthBench evaluations, adds support for additional models (Claude, Gemini), and is kept in sync with the upstream scoring and evaluation logic so results are fully reproducible.
+An implementation of OpenAI's HealthBench and HealthBench Professional evaluation frameworks, based on [simple-evals](https://github.com/openai/simple-evals). This repository focuses exclusively on HealthBench evaluations, adds support for additional models (Claude, Gemini), and is kept in sync with the upstream scoring and evaluation logic so results are fully reproducible.
 
 ## Supported Evaluations
 
@@ -18,7 +18,7 @@ A implementation of OpenAI's HealthBench and HealthBench Professional evaluation
 
 **HealthBench Professional** evaluates LLMs on real clinician chat tasks spanning three use cases: care consult, writing and documentation, and medical research. It applies a length adjustment penalty by default (center=2,000 chars, penalty=0.0147 per 500 chars) as described in Section 4.1 of the paper. Data is loaded from HuggingFace automatically, with the bundled local file as a fallback if HuggingFace is unavailable.
 
-## Updates
+<!-- ## Updates
 
 - **HealthBench Professional support**: `--eval=healthbench_professional` runs the 525-example benchmark. GPT-5.4 grader, length adjustment, and paper defaults are all applied automatically. Data loaded from HuggingFace with local fallback.
 - **Explicit grader config**: `--healthbench-grader-model` and `--healthbench-grader-reasoning-effort` control the rubric grader for any eval. All active settings are shown in the args namespace at runtime.
@@ -27,6 +27,7 @@ A implementation of OpenAI's HealthBench and HealthBench Professional evaluation
 - **GPT-5 models**: `gpt-5.5-2026-04-23`, `gpt-5.4-2026-03-05`, `gpt-5.4-mini-2026-03-17` added via Responses API.
 - **Gemini support**: `gemini-3-flash-preview`, `gemini-3.1-pro-preview`, `gemini-3.1-flash-lite`.
 - **Claude support**: `claude-opus-4-7`, `claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929`, `claude-3-7-sonnet-20250219`, `claude-3-haiku-20240307`.
+-->
 
 ## Setup
 
