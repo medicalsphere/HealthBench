@@ -528,6 +528,7 @@ class HealthBenchEval(Eval):
             if self.physician_completions_mode is not None:
                 response_text = row["completion_to_trial"]
                 response_usage = None
+                response_error = None
                 actual_queried_prompt_messages = prompt_messages
             else:
                 sampler_response = sampler(prompt_messages)
@@ -537,6 +538,7 @@ class HealthBenchEval(Eval):
                     sampler_response.actual_queried_message_list
                 )
                 response_usage = response_dict.get("usage", None)
+                response_error = response_dict.get("error", None)
 
             # Handle None response_text to prevent pipeline breakage
             if response_text is None:
@@ -578,6 +580,7 @@ class HealthBenchEval(Eval):
                 example_level_metadata={
                     "score": score,
                     "usage": get_usage_dict(response_usage),
+                    "error": response_error,
                     "rubric_items": rubric_items_with_grades,
                     "prompt": actual_queried_prompt_messages,
                     "completion": [dict(content=response_text, role="assistant")],
