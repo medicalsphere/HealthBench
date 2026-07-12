@@ -27,6 +27,7 @@ from .sampler.claude_sampler import ClaudeCompletionSampler, CLAUDE_SYSTEM_MESSA
 from .sampler.o_chat_completion_sampler import OChatCompletionSampler
 from .sampler.responses_sampler import ResponsesSampler
 from .sampler.gemini_sampler import GeminiSampler
+from .sampler.hopper_sampler import HopperSampler
 
 
 # Models that use the Responses API (no temperature, optional reasoning_effort).
@@ -369,6 +370,10 @@ def main():
             system_message=OPENAI_SYSTEM_MESSAGE_CHATGPT,
         ),
         # Claude models:
+        "claude-opus-4-8": ClaudeCompletionSampler(
+            model="claude-opus-4-8",
+            system_message=CLAUDE_SYSTEM_MESSAGE_LMSYS,
+        ),
         "claude-opus-4-7": ClaudeCompletionSampler(
             model="claude-opus-4-7",
             system_message=CLAUDE_SYSTEM_MESSAGE_LMSYS,
@@ -392,7 +397,36 @@ def main():
         "claude-3-haiku-20240307": ClaudeCompletionSampler(
             model="claude-3-haiku-20240307",
         ),
+        # Hopper models:
+        "kimi-k2.6": HopperSampler(
+            model="kimi-k2.6",
+            api_key_env="KIMI_API_KEY",
+        ),
+        "glm-5.2": HopperSampler(
+            model="glm-5.2",
+            api_key_env="ZAI_API_KEY",
+        ),
+        "gemini-3.1-flash-lite-hopper": HopperSampler(
+            model="gemini-3.1-flash-lite",
+            api_key_env="GEMINI_API_KEY",
+            provider="google",
+        ),
+        "muse-spark-1.1": HopperSampler(
+            model="muse-spark-1.1",
+            api_key_env="META_API_KEY",
+            provider="meta",
+        ),
+        # grok-4.5 is not in hopper's registry yet; provider="grok" routes it
+        # through the xAI adapter in passthrough mode.
+        "grok-4.5": HopperSampler(
+            model="grok-4.5",
+            api_key_env="XAI_API_KEY",
+            provider="grok",
+        ),
         # Gemini models:
+        "gemini-3.5-flash": GeminiSampler(
+            model="gemini-3.5-flash",
+        ),
         "gemini-2.5-pro": GeminiSampler(
             model="gemini-2.5-pro",
         ),

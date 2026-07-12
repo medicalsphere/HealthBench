@@ -21,4 +21,8 @@ dependencies = [
     "jinja2>=3.1.0",
     "pydantic>=2.0.0",
     "datasets>=2.0.0",
+    "medicalsphere-hopper",
 ]
+
+[tool.uv.sources]
+medicalsphere-hopper = { git = "https://github.com/medicalsphere/hopper" }
