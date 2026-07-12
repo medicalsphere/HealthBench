@@ -10,7 +10,20 @@ results/*
 !results/.gitkeep
 
 # MedSphere import files (contain evaluation data, not for version control)
-medsphere-import/*.json
+medsphere-import/
+
+# macOS
+.DS_Store
+
+# Data assets (zips and dataset files; keep README and LICENSE)
+data/*
+!data/assets/
+data/assets/*
+!data/assets/README
+!data/assets/LICENSE
+
+# Reference papers (local context only)
+docs/
 
 # Python
 __pycache__/

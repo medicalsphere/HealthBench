@@ -1,6 +1,6 @@
 # HealthBench
 
-An implementation of OpenAI's HealthBench and HealthBench Professional evaluation frameworks, based on [simple-evals](https://github.com/openai/simple-evals). This repository focuses exclusively on HealthBench evaluations, adds support for additional models (Claude, Gemini), and is kept in sync with the upstream scoring and evaluation logic so results are fully reproducible.
+An implementation of OpenAI's HealthBench and HealthBench Professional evaluation frameworks, based on [simple-evals](https://github.com/openai/simple-evals). This repository focuses exclusively on HealthBench evaluations, adds support for additional models (Claude, Gemini), and is kept in sync with the upstream scoring and evaluation logic so results are fully reproducible. Some model providers (e.g. Moonshot AI, Z.AI, Meta AI, xAI) are accessed via [hopper](https://github.com/medicalsphere/hopper), a unified Python interface for calling model APIs.
 
 ## Supported Evaluations
 
@@ -53,6 +53,11 @@ Create a `.env` file in the project root with your API keys:
 OPENAI_API_KEY=your_openai_key
 ANTHROPIC_API_KEY=your_anthropic_key
 GEMINI_API_KEY=your_gemini_key
+# Only needed for models run via hopper:
+KIMI_API_KEY=your_kimi_key
+ZAI_API_KEY=your_zai_key
+META_API_KEY=your_meta_key
+XAI_API_KEY=your_xai_key
 ```
 
 ## Usage
