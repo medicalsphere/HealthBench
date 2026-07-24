@@ -54,7 +54,7 @@ OPENAI_API_KEY=your_openai_key
 ANTHROPIC_API_KEY=your_anthropic_key
 GEMINI_API_KEY=your_gemini_key
 # Only needed for models run via hopper:
-KIMI_API_KEY=your_kimi_key
+MOONSHOT_API_KEY=your_moonshot_key
 ZAI_API_KEY=your_zai_key
 META_API_KEY=your_meta_key
 XAI_API_KEY=your_xai_key
@@ -113,8 +113,10 @@ uv run python -m healthbench \
 
 | Parameter | Description |
 |---|---|
-| `--model` | Model name (use `--list-models` to see all available models) |
+| `--model` | Model name, or comma-separated list of names (use `--list-models` to see all available models) |
+| `--list-models` | Print all available model names and exit |
 | `--eval` | Evaluation type: `healthbench`, `healthbench_hard`, `healthbench_consensus`, `healthbench_meta`, `healthbench_professional` |
+| `--model-reasoning-effort` | Reasoning effort for the candidate model(s): `low`, `medium`, `high`, `xhigh` (`xhigh` is Anthropic-only). Only applies to reasoning-capable samplers (Responses API or hopper); the effort is appended to the model name in output files. |
 | `--n-threads` | Number of parallel threads (default: `4`) |
 | `--n-repeats` | Number of evaluation repeats (default: `1`) |
 | `--examples` | Number of examples to run (overrides default) |

@@ -89,6 +89,18 @@ def main():
         default=4,
         help="Number of threads to run. Only supported for HealthBench and HealthBenchMeta.",
     )
+    parser.add_argument(
+        "--model-reasoning-effort",
+        type=str,
+        choices=["low", "medium", "high", "xhigh"],
+        default=None,
+        help=(
+            "Reasoning effort for the candidate model(s) selected with --model. "
+            "Only supported for reasoning models (Responses API or hopper); "
+            "xhigh is Anthropic-only. "
+            "The effort is appended to the model name in output files."
+        ),
+    )
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")
     parser.add_argument(
         "--output-dir",
@@ -267,6 +279,10 @@ def main():
             reasoning_effort="low",
         ),
         # GPT-5 models
+        "gpt-5.6-sol": ResponsesSampler(
+            model="gpt-5.6-sol",
+            reasoning_model=True,
+        ),
         "gpt-5.5-2026-04-23": ResponsesSampler(
             model="gpt-5.5-2026-04-23",
             reasoning_model=True,
@@ -386,6 +402,10 @@ def main():
             model="claude-opus-4-5-20251101",
             system_message=CLAUDE_SYSTEM_MESSAGE_LMSYS,
         ),
+        "claude-fable-5": ClaudeCompletionSampler(
+            model="claude-fable-5",
+            system_message=CLAUDE_SYSTEM_MESSAGE_LMSYS,
+        ),
         "claude-3-opus-20240229_empty": ClaudeCompletionSampler(
             model="claude-3-opus-20240229",
             system_message=CLAUDE_SYSTEM_MESSAGE_LMSYS,
@@ -398,9 +418,21 @@ def main():
             model="claude-3-haiku-20240307",
         ),
         # Hopper models:
+        # Kimi models: hopper >=0.7.1 drops max_tokens (Moonshot deprecated it);
+        # max_tokens=None skips the sampler's 4096 default so nothing is sent
+        # and Moonshot's server-side cap applies (131072 for kimi-k3).
         "kimi-k2.6": HopperSampler(
             model="kimi-k2.6",
-            api_key_env="KIMI_API_KEY",
+            api_key_env="MOONSHOT_API_KEY",
+            max_tokens=None,
+        ),
+        # kimi-k3 has thinking always on; effort is set via the canonical
+        # reasoning param (Moonshot's reasoning_effort — only "max" today).
+        "kimi-k3": HopperSampler(
+            model="kimi-k3",
+            api_key_env="MOONSHOT_API_KEY",
+            reasoning={"effort": "max"},
+            max_tokens=None,
         ),
         "glm-5.2": HopperSampler(
             model="glm-5.2",
@@ -411,10 +443,47 @@ def main():
             api_key_env="GEMINI_API_KEY",
             provider="google",
         ),
+        # gemini-3.6-flash isn't in hopper's registry yet; provider="google"
+        # routes it through the Gemini adapter in passthrough mode. reasoning
+        # high -> thinking_level=high; max_tokens -> max_output_tokens.
+        "gemini-3.6-flash-hopper": HopperSampler(
+            model="gemini-3.6-flash",
+            api_key_env="GEMINI_API_KEY",
+            provider="google",
+            reasoning={"effort": "high"},
+            max_tokens=65536,
+        ),
         "muse-spark-1.1": HopperSampler(
             model="muse-spark-1.1",
             api_key_env="META_API_KEY",
             provider="meta",
+            max_tokens=8192,
+        ),
+        "gpt-5.6-sol-hopper": HopperSampler(
+            model="gpt-5.6-sol",
+            api_key_env="OPENAI_API_KEY",
+            provider="openai",
+            max_tokens=None,
+        ),
+        "claude-fable-5-hopper": HopperSampler(
+            model="claude-fable-5",
+            api_key_env="ANTHROPIC_API_KEY",
+            provider="anthropic",
+            max_tokens=16000,
+        ),
+        # claude-opus-5 isn't in hopper's registry yet; provider="anthropic"
+        # routes it through the Anthropic adapter in passthrough mode. Effort
+        # defaults to high via output_config (Anthropic's effort control, sent
+        # through provider_options — the adapter has no reasoning param).
+        # max_tokens=20000 is the practical ceiling: hopper's complete() is
+        # non-streaming, and the Anthropic SDK rejects larger caps that could
+        # exceed its 10-minute non-streaming limit.
+        "claude-opus-5": HopperSampler(
+            model="claude-opus-5",
+            api_key_env="ANTHROPIC_API_KEY",
+            provider="anthropic",
+            max_tokens=20000,
+            provider_options={"output_config": {"effort": "high"}},
         ),
         # grok-4.5 is not in hopper's registry yet; provider="grok" routes it
         # through the xAI adapter in passthrough mode.
@@ -444,6 +513,9 @@ def main():
         ),
         "gemini-3.1-flash-lite": GeminiSampler(
             model="gemini-3.1-flash-lite",
+        ),
+        "gemini-3.6-flash": GeminiSampler(
+            model="gemini-3.6-flash",
         )
     }
 
@@ -460,6 +532,31 @@ def main():
                 print(f"Error: Model '{model_name}' not found.")
                 return
         models = {model_name: models[model_name] for model_name in models_chosen}
+
+    if args.model_reasoning_effort:
+        effort = args.model_reasoning_effort
+        if not args.model:
+            print("Error: --model-reasoning-effort requires --model.")
+            return
+        renamed = {}
+        for model_name, sampler in models.items():
+            if isinstance(sampler, ResponsesSampler) and sampler.reasoning_model:
+                sampler.reasoning_effort = effort
+            elif isinstance(sampler, HopperSampler):
+                if sampler.provider == "anthropic":
+                    # Anthropic's effort control is output_config, passed through
+                    # hopper's provider_options (the adapter has no reasoning param).
+                    sampler.provider_options = {"output_config": {"effort": effort}}
+                else:
+                    sampler.reasoning = {"effort": effort}
+            else:
+                print(
+                    f"Error: --model-reasoning-effort is not supported for "
+                    f"'{model_name}' (not a reasoning model sampler)."
+                )
+                return
+            renamed[f"{model_name}_{effort}"] = sampler
+        models = renamed
 
     print(f"Running with args {args}")
 

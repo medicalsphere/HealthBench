@@ -92,13 +92,21 @@ class ClaudeCompletionSampler(SamplerBase):
                     "",
                 )
 
+                # Safety classifiers (e.g. on claude-fable-5) can decline with
+                # stop_reason "refusal"; record it so empty responses are auditable.
+                error = None
+                if response_message.stop_reason == "refusal":
+                    details = getattr(response_message, "stop_details", None)
+                    category = getattr(details, "category", None) if details else None
+                    error = f"refusal: {category or 'unspecified'}"
+
                 claude_input_messages: MessageList = message_list
                 if self.system_message:
                     claude_input_messages = [{"role": "system", "content": self.system_message}] + message_list
 
                 return SamplerResponse(
                     response_text=response_text,
-                    response_metadata={},
+                    response_metadata={"error": error},
                     actual_queried_message_list=claude_input_messages,
                 )
             except anthropic.RateLimitError as e:
